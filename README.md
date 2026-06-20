@@ -234,8 +234,6 @@ python train_all.py
 
 ## Dataset Setup
 
-**Do not upload the dataset to GitHub.**
-
 Place the file below manually inside the `models/` folder before training:
 
 ```text
