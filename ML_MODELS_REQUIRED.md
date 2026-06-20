@@ -1,123 +1,77 @@
-# ML Models, Assumptions & Evaluation
+# ML Models & External Data Requirements
 
-This document summarizes all predictive models used in GridWise, their assumptions, limitations, evaluation metrics, and future improvements.
-
-GridWise uses a hybrid architecture consisting of:
-
-1. Heuristic and statistical computations (`precompute.mjs`)
-2. Machine learning models (`train_*.py`)
+This document covers features that require trained ML models or external data to fully implement. Some features use heuristic/proxy implementations, while others are now powered by trained machine learning models.
 
 ---
 
-# 1. Congestion Impact Score — PROXY IMPLEMENTED
+## 1. Congestion Impact Score — PROXY IMPLEMENTED
 
-## Current Implementation
-
-Congestion score is computed as:
+**Dashboard status:** A proxy score (0–100) is computed per junction using:
 
 ```text
-score =
-parking_violations
-× (1 + multi_violation_ratio)
-× (1 + rush_hour_share × 0.5)
+score = parking_violations × (1 + multi_violation_ratio) × (1 + rush_hour_share × 0.5)
 ```
 
-Normalized to a 0–100 scale.
+Normalized to the highest-scoring junction.
 
-## Inputs
+**Limitations of the proxy:** It measures *enforcement activity patterns*, not actual traffic degradation. A junction may have high violations but low congestion impact if it's on a wide road, or vice versa.
 
-- Parking violations
-- Multi-violation ratio
-- Rush hour concentration
+**Full ML implementation would require:**
 
-## Limitation
-
-This measures enforcement intensity rather than actual traffic degradation.
-
-## Future Work
-
-Additional data:
-
-- Google Maps Traffic API
-- Bangalore TMC feeds
-- INRIX data
-
-Models:
-
-- XGBoost
-- LightGBM
-
-Target:
-
-- Speed reduction
-- Delay estimation
+- **Data needed:** Real-time or historical traffic speed/volume data (Google Maps Traffic API, Bangalore TMC feeds, or INRIX data) joined with violation lat/lon.
+- **Model:** Regression (XGBoost/LightGBM) predicting traffic speed reduction as a function of parking violation density, road type, time of day, junction proximity.
+- **Benefit over proxy:** Would quantify actual speed/delay impact in km/h or minutes, not just relative violation intensity.
 
 ---
 
-# 2. Police Deployment Engine — HYBRID IMPLEMENTATION
+## 2. Police Deployment Recommendations — HYBRID IMPLEMENTATION
 
-## Heuristic Layer
+**Dashboard status:** The dashboard currently uses two layers:
 
-Historical ranking using:
+### Heuristic layer
 
-- Station
-- Day of week
-- Hour
-
-Priority:
+Deployment priority is computed by ranking all station × day × hour combinations by historical violation count.
 
 - Top 5% → Critical
 - Next 10% → High
 
-## ML Layer
+Station profiles show average daily violations and peak enforcement windows.
 
-Model:
+### ML layer
 
-Exponential Smoothing + Day-of-Week Seasonality
+A forecasting model (`train_forecast.py`) predicts future violation demand.
 
-Outputs:
+**Model:** Exponential Smoothing + Day-of-Week Seasonality
 
-- 14-day forecasts
-- Peak windows
+**Outputs:**
+
+- 14-day station forecasts
+- Peak enforcement windows
 - Demand trends
 
-## Limitation
+**Limitations:**
 
-Does not optimize:
+Current implementation still does not optimize:
 
 - Officer availability
 - Shift constraints
 - Travel time
-- Budget
+- Budget constraints
+- Diminishing returns of enforcement
 
-## Future Work
+**Full optimization would require:**
 
-Use:
-
-- Google OR-Tools
-- MILP optimization
+- **Model:** Mixed Integer Linear Programming (MILP) or Constraint Satisfaction using Google OR-Tools.
+- **Additional inputs:** Number of available officers per shift, shift duration constraints, travel time matrix between stations, budget constraints.
+- **Benefit:** Would produce an actual shift roster that maximizes coverage under real-world constraints.
 
 ---
 
-# 3. Anomaly Detection — HYBRID IMPLEMENTATION
+## 3. Anomaly Detection — MACHINE LEARNING IMPLEMENTED
 
-## Statistical Layer
+**Dashboard status:** A trained Isolation Forest model detects unusual officer and device behavior.
 
-Z-score analysis:
-
-```text
-0.40 × activity_z
-+ 0.35 × rejection_z
-+ 0.25 × geo_z
-```
-
-## ML Layer
-
-Model:
-
-Isolation Forest
-
-Features:
+**Current features:**
 
 - Violations per day
 - Rejection rate
@@ -126,122 +80,106 @@ Features:
 - Station diversity
 - Peak-day concentration
 
-## Limitation
+**Entities analyzed:**
 
-Does not imply misconduct.
+- 1,361 officers
+- 1,436 devices
 
-Human review is required.
+**Model:**
+
+Isolation Forest
+
+**Assumption:**
+
+10% contamination (expected anomaly rate).
+
+**Limitations:**
+
+- Unsupervised model
+- No ground-truth anomaly labels
+- Does not imply misconduct
+- Requires human verification
+
+**Future improvements:**
+
+Additional features:
+
+- Time between consecutive violations
+- Spatial clustering consistency
+- Peer comparison within police stations
+
+Potential models:
+
+- Local Outlier Factor
+- Autoencoders
 
 ---
 
-# 4. Violation Forecasting — IMPLEMENTED
+## 4. Violation Forecasting — IMPLEMENTED
+
+**What it measures:** Predicts future violation counts per station for 14 days ahead.
+
+**Current implementation:**
 
 Model:
 
 Exponential Smoothing + Day-of-Week Seasonality
 
-Inputs:
+Features:
 
-- Historical counts
+- Historical daily counts
 - Day of week
 - Month
 
 Outputs:
 
 - 14-day forecasts
-- MAE
-- MAPE
+- Station demand trends
+- Peak enforcement windows
 
-Future improvements:
+**Current limitations:**
 
-- Weather
+Forecasting accuracy is limited because the dataset does not contain:
+
+- Weather information
 - Event calendars
 - Metro connectivity
+- Seasonal events
 
-Potential upgrades:
+**Future upgrades:**
+
+Potential models:
 
 - Prophet
 - SARIMA
 
----
+Additional features:
 
-# 5. Hotspot Prediction — IMPLEMENTED
-
-Model:
-
-XGBoost Regressor
-
-Features:
-
-- Latitude
-- Longitude
-- Hour
-- Day of week
-- Month
-- Police station
-
-Outputs:
-
-- Hourly hotspot maps
-- Daily hotspot maps
-- Top 200 hotspot cells
-
-Future improvements:
-
-- Weather
-- Events
-- Road type
-- Public transport
+- Event calendars
+- Weather data
+- Metro station proximity
 
 ---
 
-# 6. Repeat Offender Prediction — IMPLEMENTED
+## 5. One-Way Road Suggestions — NOT IMPLEMENTABLE
 
-Model:
+**What it measures:** Identifies roads where converting to one-way traffic could reduce parking-induced congestion.
 
-XGBoost Classifier
+**Why it can't be done:** The dataset has **zero information** about road geometry, lane count, directionality, or traffic flow.
 
-Goal:
+One-way recommendations require road network topology.
 
-Predict whether a vehicle will commit another violation within 30 days.
+**Would require:**
 
-Features:
-
-- Violation frequency
-- Station diversity
-- Parking ratio
-- Temporal patterns
-- Geographic spread
-- Escalation score
-- Recency
-- Validation rejection rate
-
-Outputs:
-
-- Risk score
-- Reoffense probability
-- Risk category
-
----
-
-# 7. One-Way Road Suggestions — NOT IMPLEMENTABLE
-
-The dataset does not contain:
-
-- Road geometry
+- OpenStreetMap road network for Bangalore (`osmnx`)
 - Lane count
-- Road directionality
-- Traffic flow
-
-Would require:
-
-- OpenStreetMap
-- OSMnx
-- SUMO traffic simulation
+- Road width
+- Existing one-way designations
+- Traffic microsimulation (SUMO)
 
 ---
 
-# Model Evaluation
+## Model Evaluation Summary
 
 Training command:
 
@@ -257,97 +195,23 @@ Training time:
 ≈ 48 seconds
 ```
 
----
-
-## Hotspot Prediction
-
-| Metric | Value |
-|--------|-------|
-| MAE | 2.504 |
-| R² | 0.152 |
-| Training Samples | 43,622 |
-| Test Samples | 14,779 |
+| Model | Primary Metric | Value |
+|-------|---------------|-------|
+| Hotspot Prediction | MAE | 2.504 |
+| Hotspot Prediction | R² | 0.152 |
+| Repeat Offender Prediction | AUC | 0.730 |
+| Validation Engine | AUC | 0.686 |
+| Anomaly Detection | Anomalies | 280 |
+| Violation Forecasting | Stations Forecasted | 12 |
 
 ---
 
-## Repeat Offender Prediction
+## Summary
 
-| Metric | Value |
-|--------|-------|
-| AUC | 0.730 |
-| Accuracy | 75% |
-| Precision | 27% |
-| Recall | 54% |
-| F1 Score | 36% |
-| Positive Rate | 13.3% |
-
-Dataset:
-
-| Metric | Value |
-|--------|-------|
-| Vehicles | 24,051 |
-| Training Samples | 19,240 |
-| Test Samples | 4,811 |
-
----
-
-## Anomaly Detection
-
-| Metric | Value |
-|--------|-------|
-| Officers Analysed | 1,361 |
-| Devices Analysed | 1,436 |
-| Officer Anomalies | 136 |
-| Device Anomalies | 144 |
-| Flagged Entities | 60 |
-
----
-
-## Validation Confidence Engine
-
-| Metric | Value |
-|--------|-------|
-| AUC | 0.686 |
-| Accuracy | 72% |
-| Approval Rate | 69.9% |
-
-Dataset:
-
-| Metric | Value |
-|--------|-------|
-| Records | 165,154 |
-| Training Samples | 132,123 |
-| Test Samples | 33,031 |
-
----
-
-## Violation Forecasting
-
-12 police stations forecasted.
-
-| Station | MAE | MAPE |
-|---------|-----|------|
-| Upparpet | 70.0 | 23.5% |
-| Shivajinagar | 134.4 | 59.0% |
-| Malleshwaram | 68.6 | 38.4% |
-| HAL Old Airport | 41.0 | 93.7% |
-| City Market | 65.9 | 43.5% |
-| Vijayanagara | 23.2 | 64.0% |
-| Rajajinagar | 51.1 | 45.2% |
-| Kodigehalli | 31.8 | 56.7% |
-| Magadi Road | 54.2 | 121.6% |
-| Jeevanbheemanagar | 12.4 | 57.8% |
-| K.R. Pura | 26.3 | 102.3% |
-| Halasuru Gate | 18.6 | 90.5% |
-
----
-
-# Overall Training Summary
-
-| Model | Algorithm | Primary Metric |
-|-------|-----------|---------------|
-| Hotspot Prediction | XGBoost Regressor | MAE = 2.504 |
-| Repeat Offender Prediction | XGBoost Classifier | AUC = 0.730 |
-| Anomaly Detection | Isolation Forest | 280 anomalies |
-| Validation Engine | XGBoost Classifier | AUC = 0.686 |
-| Violation Forecasting | Exponential Smoothing | 12 stations forecasted |
+| Feature | Status | Data Available? | External Data? | Complexity |
+|---|---|---|---|---|
+| Congestion Impact | Proxy Implemented | Partial | Yes | Medium |
+| Police Deployment | Hybrid (Heuristic + ML) | Yes | Optional | Medium |
+| Anomaly Detection | ML Implemented | Yes | No | Medium |
+| Violation Forecasting | Implemented | Yes | Optional | Medium |
+| One-Way Road Suggestions | Not Implementable | No | OSM Required | High |
