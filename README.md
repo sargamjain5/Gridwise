@@ -1,38 +1,88 @@
 # GridWise
 
-**GridWise** is an AI-powered urban mobility and parking intelligence platform built for **Bangalore Police** (enforcement) and **citizens** (smart parking, congestion reduction, and violation reporting).
+GridWise is an AI-powered urban mobility and parking intelligence platform built for **Bangalore Police** (enforcement) and **citizens** (smart parking, congestion reduction, and violation reporting).
 
 It combines **predictive analytics, computer vision, and geospatial intelligence** to optimize parking utilization, improve traffic flow, and automate violation detection.
 
-Built with **React, TypeScript, Vite, FastAPI, XGBoost, YOLOv8, EasyOCR, and Leaflet**.
+Built using **React, TypeScript, Vite, FastAPI, XGBoost, YOLOv8, EasyOCR, Isolation Forest, and Leaflet**.
+
+---
+
+## Features
+
+### Police Dashboard
+
+GridWise provides 9 analytics modules for authorities:
+
+| Module | Description |
+|--------|-------------|
+| Overview | KPI cards, alerts and quick navigation |
+| Hotspot Prediction | Predict future violation hotspots |
+| CCTV Automation | Detect violations using ANPR |
+| Deployment Engine | Recommend enforcement deployment |
+| Offender Risk Engine | Identify repeat offenders |
+| Policy Recommendations | Suggest infrastructure interventions |
+| Hotspots & Congestion | Rank stations and junctions |
+| Anomaly Detection | Detect unusual officer/device behavior |
+| Spatial Map | Visualize city-wide violations |
+
+---
+
+### Public Dashboard
+
+GridWise also provides citizen-facing tools:
+
+| Module | Description |
+|--------|-------------|
+| Parking Map & Alerts | Live parking availability |
+| Smart Recommendations | Recommend optimal parking spots |
+| Mobility Rewards | Upload violations and earn reward points |
+
+---
+
+## Machine Learning Overview
+
+GridWise uses five machine learning models:
+
+| Model | Algorithm |
+|-------|-----------|
+| Hotspot Prediction | XGBoost Regressor |
+| Repeat Offender Prediction | XGBoost Classifier |
+| Validation Confidence Engine | XGBoost Classifier |
+| Anomaly Detection | Isolation Forest |
+| Violation Forecasting | Exponential Smoothing |
+
+Detailed assumptions, limitations and evaluation metrics are available in:
+
+```text
+ML_MODELS_REQUIRED.md
+```
 
 ---
 
 ## Quick Start
 
-### 1. Install frontend dependencies
+### Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Start the frontend
+### Start frontend
 
 ```bash
 npm run dev
 ```
 
-The dashboard will be available at:
+Open:
 
-```
+```text
 http://localhost:5173
 ```
 
 ---
 
-### 3. Generate ML predictions (Optional)
-
-This trains all models and exports predictions to `public/ml_models.json`.
+## Train Machine Learning Models
 
 ```bash
 cd models
@@ -40,13 +90,22 @@ cd models
 python train_all.py
 ```
 
-Training takes approximately **40–60 seconds**.
+This generates:
+
+```text
+public/ml_models.json
+models/trained/*.joblib
+```
+
+Training takes approximately:
+
+```text
+45-60 seconds
+```
 
 ---
 
-### 4. Start the ANPR backend (Optional)
-
-This enables real-time vehicle and license plate detection.
+## Start ANPR Backend (Optional)
 
 ```bash
 cd models
@@ -56,19 +115,19 @@ python server.py
 
 Backend:
 
-```
+```text
 http://localhost:8000
 ```
 
-Swagger documentation:
+Swagger docs:
 
-```
+```text
 http://localhost:8000/docs
 ```
 
 Health check:
 
-```
+```text
 http://localhost:8000/health
 ```
 
@@ -78,16 +137,8 @@ http://localhost:8000/health
 
 ```text
 GridWise/
+
 ├── models/
-│   ├── trained/
-│   ├── server.py
-│   ├── train_all.py
-│   ├── train_hotspot.py
-│   ├── train_offender.py
-│   ├── train_anomaly.py
-│   ├── train_validation.py
-│   ├── train_forecast.py
-│   └── jan to may police violation_anonymized791b166.csv
 │
 ├── public/
 │   ├── precomputed.json
@@ -103,89 +154,41 @@ GridWise/
 
 ---
 
-## Police Dashboard (9 Pages)
-
-| Page | Purpose | ML Model |
-|------|---------|----------|
-| **Overview** | KPI cards, alerts, quick navigation | — |
-| **Hotspot Prediction** | Predict violations for any location and time | XGBoost Regressor |
-| **CCTV Automation** | No-parking detection, ANPR and violation flagging | YOLOv8 + EasyOCR |
-| **Deployment Engine** | Predictive officer deployment | Exponential Smoothing |
-| **Offender Risk Engine** | Risk score for repeat offenders | XGBoost Classifier |
-| **Policy Recommendations** | Infrastructure planning suggestions | Rule-based Engine |
-| **Hotspots & Congestion** | Station and junction rankings | — |
-| **Anomaly Detection** | Officer and device outlier detection | Isolation Forest |
-| **Spatial Map** | City-wide violation density visualization | — |
-
----
-
-## Public Dashboard (3 Tabs)
-
-| Tab | Purpose |
-|-----|---------|
-| **Parking Map & Alerts** | Parking availability and no-parking zones |
-| **Smart Recommendations** | Suggest optimal parking locations |
-| **Mobility Rewards** | Upload violation images and earn reward points |
-
----
-
 ## Data Flow
 
 ```text
-CSV Dataset (298K records)
+CSV Dataset (298K Records)
 
-     │
+        │
 
-     ├── precompute.mjs
-     │
-     └── public/precomputed.json
+ ┌──────┴──────┐
 
-     │
+precompute.mjs  train_*.py
 
-     └── train_all.py
-           │
-           ├── public/ml_models.json
-           └── models/trained/*.joblib
+       │             │
+
+       │             ├── Hotspot Prediction
+       │             ├── Offender Prediction
+       │             ├── Forecasting
+       │             ├── Validation Engine
+       │             └── Isolation Forest
+
+       │
+
+precomputed.json   ml_models.json
+
+        │
+
+        ▼
+
+ React Dashboard
 
 
-User uploads CSV
+ANPR Backend
 
-     │
+POST /detect/image
 
-     └── processData.ts
-
-            │
-
-            └── Dashboard updates live
-
-
-ANPR Backend (localhost:8000)
-
-     │
-
-     ├── POST /detect/image
-
-     └── POST /detect/video
-```
-
----
-
-## Regenerating Data
-
-If the source CSV changes:
-
-### Regenerate precomputed metrics
-
-```bash
-node scripts/precompute.mjs
-```
-
-### Retrain all ML models
-
-```bash
-cd models
-
-python train_all.py
+POST /detect/video
 ```
 
 ---
@@ -200,12 +203,6 @@ python train_all.py
 - Tailwind CSS v4
 - shadcn/ui
 
-### Visualization
-
-- Recharts
-- Leaflet
-- OpenStreetMap
-
 ### Backend
 
 - FastAPI
@@ -216,14 +213,20 @@ python train_all.py
 - XGBoost
 - Scikit-learn
 - Isolation Forest
-- YOLOv8
-- EasyOCR
+- Exponential Smoothing
 
 ### Computer Vision
 
-- Ultralytics
+- YOLOv8
+- EasyOCR
 - OpenCV
 - Supervision
+
+### Visualization
+
+- Recharts
+- Leaflet
+- OpenStreetMap
 
 ### Data Processing
 
@@ -234,16 +237,12 @@ python train_all.py
 
 ## Dataset Setup
 
-Place the file below manually inside the `models/` folder before training:
+Place the dataset manually inside:
 
 ```text
 models/jan to may police violation_anonymized791b166.csv
 ```
 
-Then run:
+before training.
 
-```bash
-cd models
-
-python train_all.py
-```
+The dataset is intentionally excluded from GitHub because it exceeds GitHub's 100 MB file size limit.
