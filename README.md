@@ -6,6 +6,7 @@ It combines **predictive analytics, computer vision, and geospatial intelligence
 
 Built using **React, TypeScript, Vite, FastAPI, XGBoost, YOLOv8, EasyOCR, Isolation Forest, and Leaflet**.
 
+Live Demo: https://gridwise-frontend.onrender.com/
 ---
 
 ## Features
@@ -73,13 +74,6 @@ npm install
 ```bash
 npm run dev
 ```
-
-Open:
-
-```text
-http://localhost:5173
-```
-
 ---
 
 ## Train Machine Learning Models
@@ -105,7 +99,7 @@ Training takes approximately:
 
 ---
 
-## Start ANPR Backend (Optional)
+## Start ANPR Backend 
 
 ```bash
 cd models
@@ -160,27 +154,21 @@ GridWise/
 CSV Dataset (298K Records)
 
         │
-
  ┌──────┴──────┐
 
 precompute.mjs  train_*.py
 
        │             │
-
        │             ├── Hotspot Prediction
        │             ├── Offender Prediction
        │             ├── Forecasting
        │             ├── Validation Engine
        │             └── Isolation Forest
-
        │
 
 precomputed.json   ml_models.json
-
         │
-
         ▼
-
  React Dashboard
 
 
