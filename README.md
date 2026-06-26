@@ -4,9 +4,9 @@ GridWise is an AI-powered urban mobility and parking intelligence platform built
 
 It combines **predictive analytics, computer vision, and geospatial intelligence** to optimize parking utilization, improve traffic flow, and automate violation detection.
 
+Live Demo: https://gridwise-frontend.onrender.com/
 Built using **React, TypeScript, Vite, FastAPI, XGBoost, YOLOv8, EasyOCR, Isolation Forest, and Leaflet**.
 
-Live Demo: https://gridwise-frontend.onrender.com/
 ---
 
 ## Features
